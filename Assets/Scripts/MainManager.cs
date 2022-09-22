@@ -1,24 +1,23 @@
-using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class MainManager : MonoBehaviour
 {
+
     public Brick BrickPrefab;
     public int LineCount = 6;
     public Rigidbody Ball;
 
+    public Text BestScore;
     public Text ScoreText;
     public GameObject GameOverText;
     
     private bool m_Started = false;
     private int m_Points;
-    
     private bool m_GameOver = false;
 
-    
     // Start is called before the first frame update
     void Start()
     {
@@ -36,6 +35,15 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+        UpdateScore();
+    }
+
+    private void UpdateScore()
+    {
+        if (GameManager.Instance.saveData.bestPlayer != null)
+        {
+            BestScore.text = $"Best Score : {GameManager.Instance.saveData.bestPlayer} - {GameManager.Instance.saveData.bestScore}";
+        }
     }
 
     private void Update()
@@ -45,7 +53,7 @@ public class MainManager : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 m_Started = true;
-                float randomDirection = Random.Range(-1.0f, 1.0f);
+                float randomDirection = UnityEngine.Random.Range(-1.0f, 1.0f);
                 Vector3 forceDir = new Vector3(randomDirection, 1, 0);
                 forceDir.Normalize();
 
@@ -72,5 +80,26 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        if (GameManager.Instance.saveData.bestScore < m_Points)
+        {
+            GameManager.Instance.saveData.bestScore = m_Points;
+            GameManager.Instance.saveData.bestPlayer = GameManager.Instance.saveData.currentUser;
+            UpdateScore();
+
+        }
+        if(GameManager.Instance.saveData.lstScore.Count < 10)
+        {
+            GameManager.Instance.saveData.lstScore.Add(new Score(m_Points, GameManager.Instance.saveData.currentUser));
+        }
+        else
+        {
+            Score lastScore = GameManager.Instance.saveData.lstScore.OrderBy(a => a.score).First();
+            if(lastScore.score < m_Points)
+            {
+                GameManager.Instance.saveData.lstScore.RemoveAll(a => a.date == lastScore.date);
+                GameManager.Instance.saveData.lstScore.Add(new Score(m_Points, GameManager.Instance.saveData.currentUser));
+            }
+        }
+        GameManager.Instance.Save();
     }
 }
